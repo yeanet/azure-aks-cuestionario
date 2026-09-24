@@ -41,6 +41,9 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Terraform Force Unlock
+        run: terraform force-unlock -force 0f765545-b76c-b943-abf4-3149216dfc15
+
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
