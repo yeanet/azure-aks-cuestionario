@@ -1,0 +1,23 @@
+replicaCount: 1
+
+image:
+  repository: acrcuestionario10694.azurecr.io/cuestionario
+  pullPolicy: IfNotPresent
+  tag: "initial"
+
+service:
+  type: ClusterIP
+  port: 80
+
+containerPort: 80
+
+resources: {}
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+
+
+
