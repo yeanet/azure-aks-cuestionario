@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: "Escribe DESTROY para confirmar la destrucción completa"
+        description: "Escribe DESTROY para confirmar"
         required: true
         type: string
 
@@ -18,6 +18,7 @@ concurrency:
 
 env:
   ARM_USE_OIDC: true
+  ARM_USE_AZUREAD: true
   ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
   ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -28,18 +29,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      # --------------------------------------------------
+      # 1. Validar confirmación
+      # --------------------------------------------------
       - name: Validate confirmation
         run: |
           if [ "${{ inputs.confirmation }}" != "DESTROY" ]; then
-            echo "ERROR: Debes escribir exactamente DESTROY para continuar."
+            echo "ERROR: Debes escribir exactamente DESTROY."
             exit 1
           fi
 
           echo "Confirmación válida."
 
+      # --------------------------------------------------
+      # 2. Checkout
+      # --------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # --------------------------------------------------
+      # 3. Azure Login mediante OIDC
+      # --------------------------------------------------
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -47,39 +58,87 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # --------------------------------------------------
+      # 4. Setup Terraform
+      # --------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.6
 
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Validate
-        run: terraform validate
-
-      - name: Terraform Destroy Plan
-        run: terraform plan -destroy -out=destroy.tfplan
-
-      - name: Terraform Destroy
-        run: terraform apply -auto-approve destroy.tfplan
-
-      - name: Destroy Summary
-        if: success()
+      # --------------------------------------------------
+      # 5. Mostrar archivos Terraform
+      # --------------------------------------------------
+      - name: Check Terraform files
         run: |
-          {
-            echo "## Terraform Destroy"
-            echo ""
-            echo "**Estado:** Infraestructura destruida"
-            echo ""
-            echo "Recursos administrados por Terraform:"
-            echo ""
-            echo "- AKS"
-            echo "- ACR"
-            echo "- VNet"
-            echo "- Subnet"
-            echo "- Resource Group"
-            echo "- Otros recursos administrados por Terraform"
-            echo ""
-            echo "El Terraform State remoto permanece en Azure Storage."
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "=== Directorio actual ==="
+          pwd
+
+          echo ""
+          echo "=== Archivos Terraform ==="
+          ls -la
+
+          echo ""
+          echo "=== Backend Terraform ==="
+          cat backend.tf
+
+      # --------------------------------------------------
+      # 6. Terraform Init
+      # --------------------------------------------------
+      - name: Terraform Init
+        run: |
+          terraform init -reconfigure
+
+      # --------------------------------------------------
+      # 7. Verificar State remoto
+      # --------------------------------------------------
+      - name: Check Terraform State
+        run: |
+          echo "========================================"
+          echo "       TERRAFORM STATE"
+          echo "========================================"
+
+          terraform state list
+
+          echo ""
+          echo "========================================"
+          echo "       STATE COUNT"
+          echo "========================================"
+
+          terraform state list | wc -l
+
+      # --------------------------------------------------
+      # 8. Terraform Validate
+      # --------------------------------------------------
+      - name: Terraform Validate
+        run: |
+          terraform validate
+
+      # --------------------------------------------------
+      # 9. Terraform Plan Destroy
+      # --------------------------------------------------
+      - name: Terraform Destroy Plan
+        run: |
+          terraform plan \
+            -destroy \
+            -out=destroy.tfplan
+
+      # --------------------------------------------------
+      # 10. Mostrar resultado
+      # --------------------------------------------------
+      - name: Destroy Plan Summary
+        run: |
+          echo "========================================"
+          echo "       DESTROY PLAN COMPLETADO"
+          echo "========================================"
+
+          echo ""
+          echo "IMPORTANTE:"
+          echo "Este workflow actualmente NO ejecuta terraform apply."
+          echo ""
+          echo "El siguiente paso será ejecutar:"
+          echo ""
+          echo "terraform apply destroy.tfplan"
+          echo ""
+          echo "solo después de verificar que el plan contiene"
+          echo "los recursos correctos."
