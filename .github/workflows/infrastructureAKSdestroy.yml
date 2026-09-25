@@ -23,6 +23,10 @@ env:
   ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+defaults:
+  run:
+    working-directory: terraform
+
 jobs:
   destroy:
     name: Terraform Destroy
@@ -67,19 +71,22 @@ jobs:
           terraform_version: 1.6.6
 
       # --------------------------------------------------
-      # 5. Mostrar archivos Terraform
+      # 5. Verificar directorio Terraform
       # --------------------------------------------------
       - name: Check Terraform files
         run: |
-          echo "=== Directorio actual ==="
+          echo "========================================"
+          echo "       DIRECTORIO TERRAFORM"
+          echo "========================================"
+
           pwd
 
           echo ""
-          echo "=== Archivos Terraform ==="
+          echo "Archivos:"
           ls -la
 
           echo ""
-          echo "=== Backend Terraform ==="
+          echo "Backend Terraform:"
           cat backend.tf
 
       # --------------------------------------------------
@@ -133,12 +140,6 @@ jobs:
           echo "========================================"
 
           echo ""
-          echo "IMPORTANTE:"
-          echo "Este workflow actualmente NO ejecuta terraform apply."
+          echo "Este workflow todavía NO ejecuta destroy."
           echo ""
-          echo "El siguiente paso será ejecutar:"
-          echo ""
-          echo "terraform apply destroy.tfplan"
-          echo ""
-          echo "solo después de verificar que el plan contiene"
-          echo "los recursos correctos."
+          echo "El plan se ha generado correctamente."
