@@ -21,39 +21,67 @@ env:
 
 jobs:
   destroy:
-    name: Check Terraform
+    name: Terraform Destroy
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: terraform
 
     steps:
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Validate confirmation
+        working-directory: .
         run: |
           if [ "${{ inputs.confirmation }}" != "DESTROY" ]; then
             echo "ERROR: Debes escribir exactamente DESTROY."
             exit 1
           fi
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
+          echo "Confirmación válida."
 
-      - name: Check repository
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform State List
         run: |
-          echo "=== COMMIT ==="
-          git rev-parse HEAD
+          echo "========================================"
+          echo "TERRAFORM STATE"
+          echo "========================================"
 
-          echo ""
-          echo "=== BRANCH ==="
-          git branch --show-current
+          terraform state list
 
-          echo ""
-          echo "=== ROOT ==="
-          pwd
-          ls -la
+      - name: Terraform Destroy Plan
+        run: |
+          echo "========================================"
+          echo "TERRAFORM DESTROY PLAN"
+          echo "========================================"
 
-          echo ""
-          echo "=== FILES ==="
-          find . -maxdepth 3 -type f | sort
+          terraform plan -destroy -out=destroy.tfplan
 
-          echo ""
-          echo "=== TERRAFORM FILES ==="
-          find . -name "*.tf" -print
+      - name: Terraform Destroy
+        run: |
+          echo "========================================"
+          echo "TERRAFORM DESTROY"
+          echo "========================================"
+
+          terraform apply -auto-approve destroy.tfplan
