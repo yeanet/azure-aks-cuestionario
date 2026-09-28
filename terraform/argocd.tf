@@ -5,6 +5,7 @@ resource "helm_release" "argocd" {
 
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argo-cd"
+  version    = "10.9.2"
 
   wait    = true
   timeout = 900
