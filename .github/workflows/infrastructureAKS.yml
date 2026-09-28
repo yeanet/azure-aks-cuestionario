@@ -28,6 +28,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Debug Terraform source
+        run: |
+          echo "=== COMMIT ==="
+          git log -1 --oneline
+
+          echo "=== BRANCH ==="
+          git branch --show-current
+
+          echo "=== FILES ==="
+          ls -la
+
+          echo "=== ARGOCD.TF ==="
+          cat argocd.tf
+
+          echo "=== APPLICATION RESOURCE ==="
+          grep -n "kubernetes_manifest" argocd.tf || true
+
       - name: Azure Login
         uses: azure/login@v2
         with:
