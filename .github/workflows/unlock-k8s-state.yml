@@ -1,0 +1,70 @@
+name: Maintenance - Unlock Kubernetes Terraform State
+
+on:
+  workflow_dispatch:
+    inputs:
+      lock_id:
+        description: "ID exacto del bloqueo que se va a liberar"
+        required: true
+        type: string
+      confirmation:
+        description: "Escribe UNLOCK para confirmar"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ARM_USE_OIDC: "true"
+  ARM_USE_AZUREAD: "true"
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  unlock:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: terraform/k8s
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Validate confirmation
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          LOCK_ID: ${{ inputs.lock_id }}
+        run: |
+          if [ "$CONFIRMATION" != "UNLOCK" ]; then
+            echo "Confirmation incorrect."
+            exit 1
+          fi
+
+          if [ "$LOCK_ID" != "01a501fd-5926-7ec9-bbec-4c9033b13fc1" ]; then
+            echo "Lock ID does not match the reported lock."
+            exit 1
+          fi
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Unlock Terraform State
+        env:
+          LOCK_ID: ${{ inputs.lock_id }}
+        run: terraform force-unlock -force "$LOCK_ID"
