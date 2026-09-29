@@ -10,9 +10,6 @@ resource "helm_release" "argocd" {
   wait    = true
   timeout = 900
 
-  depends_on = [
-    azurerm_kubernetes_cluster.aks
-  ]
 }
 
 resource "kubernetes_manifest" "cuestionario_application" {

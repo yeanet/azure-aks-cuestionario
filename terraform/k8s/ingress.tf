@@ -9,8 +9,4 @@ resource "helm_release" "nginx_ingress" {
 
   wait    = true
   timeout = 600
-
-  depends_on = [
-    azurerm_kubernetes_cluster.aks
-  ]
 }
