@@ -26,6 +26,9 @@ jobs:
 
     steps:
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Azure Setup
         uses: ./.github/actions/azure-setup
 
@@ -61,6 +64,9 @@ jobs:
 
     steps:
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
       - name: Azure Setup
         uses: ./.github/actions/azure-setup
 
