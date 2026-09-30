@@ -40,6 +40,10 @@ jobs:
   destroy-argocd-application:
     name: Destroy - Argo CD Application
     runs-on: ubuntu-latest
+
+    needs:
+      - validate
+
     defaults:
       run:
         working-directory: terraform/argocd-app
@@ -67,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
 
     needs:
-      - validate
+      - destroy-argocd-application
 
     defaults:
       run:
