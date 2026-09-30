@@ -37,6 +37,31 @@ jobs:
           echo "Confirmación válida."
 
 
+  destroy-argocd-application:
+    name: Destroy - Argo CD Application
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform/argocd-app
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Setup
+        uses: ./.github/actions/azure-setup
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan Destroy
+        run: terraform plan -destroy -out=tfplan
+
+      - name: Terraform Apply Destroy
+        run: terraform apply -auto-approve tfplan
+
   destroy-kubernetes:
     name: Destroy Kubernetes Resources
     runs-on: ubuntu-latest
