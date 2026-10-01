@@ -12,7 +12,7 @@ resource "kubernetes_manifest" "cuestionario_application" {
       project = "default"
 
       source = {
-        repoURL        = "https://github.com/yeanet/Cuestionario.git"
+        repoURL        = "https://dev.azure.com/yeanet-devops/Cuestionario-AzureDevOps/_git/Cuestionario-AzureDevOps"
         targetRevision = "main"
         path           = "helm/cuestionario"
       }
