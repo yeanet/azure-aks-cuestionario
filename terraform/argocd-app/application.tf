@@ -13,7 +13,7 @@ resource "kubernetes_manifest" "cuestionario_application" {
 
       source = {
         repoURL        = "https://dev.azure.com/yeanet-devops/Cuestionario-AzureDevOps/_git/Cuestionario-AzureDevOps"
-        targetRevision = "main"
+        targetRevision = "master"
         path           = "helm/cuestionario"
       }
 
