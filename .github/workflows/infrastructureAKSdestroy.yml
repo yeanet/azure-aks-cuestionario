@@ -1,3 +1,4 @@
+```yaml
 name: Infrastructure - Destroy AKS + ACR + Kubernetes
 
 on:
@@ -21,6 +22,10 @@ env:
 
 jobs:
 
+  # ============================================================
+  # VALIDATION
+  # ============================================================
+
   validate:
     name: Validate Destroy
     runs-on: ubuntu-latest
@@ -37,6 +42,10 @@ jobs:
           echo "Confirmación válida."
 
 
+  # ============================================================
+  # DESTROY ARGO CD APPLICATION
+  # ============================================================
+
   destroy-argocd-application:
     name: Destroy - Argo CD Application
     runs-on: ubuntu-latest
@@ -47,24 +56,77 @@ jobs:
     defaults:
       run:
         working-directory: terraform/argocd-app
+
+    env:
+      TF_VAR_argocd_repo_password: ${{ secrets.ARGOCD_REPO_PASSWORD }}
+
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Azure Setup
         uses: ./.github/actions/azure-setup
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Check Argo CD Terraform variable
+        shell: bash
+        run: |
+          echo "========================================"
+          echo "CHECK ARGO CD TERRAFORM VARIABLES"
+          echo "========================================"
+
+          if [ -z "${TF_VAR_argocd_repo_password}" ]; then
+            echo "ERROR: El secret ARGOCD_REPO_PASSWORD no está definido."
+            exit 1
+          fi
+
+          echo "ARGOCD_REPO_PASSWORD está disponible."
+
       - name: Terraform Init
-        run: terraform init
+        run: |
+          terraform init -input=false
 
       - name: Terraform Validate
-        run: terraform validate
+        run: |
+          terraform validate
+
+      - name: Terraform State List
+        run: |
+          echo "========================================"
+          echo "ARGO CD TERRAFORM STATE"
+          echo "========================================"
+
+          terraform state list
 
       - name: Terraform Plan Destroy
-        run: terraform plan -destroy -out=tfplan
+        run: |
+          echo "========================================"
+          echo "ARGO CD DESTROY PLAN"
+          echo "========================================"
+
+          terraform plan \
+            -destroy \
+            -input=false \
+            -out=tfplan
 
       - name: Terraform Apply Destroy
-        run: terraform apply -auto-approve tfplan
+        run: |
+          echo "========================================"
+          echo "ARGO CD DESTROY"
+          echo "========================================"
+
+          terraform apply \
+            -input=false \
+            -auto-approve \
+            tfplan
+
+
+  # ============================================================
+  # DESTROY KUBERNETES RESOURCES
+  # ============================================================
 
   destroy-kubernetes:
     name: Destroy Kubernetes Resources
@@ -89,13 +151,16 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: terraform init
+        run: |
+          terraform init -input=false
 
       - name: Terraform Format Check
-        run: terraform fmt -check -recursive
+        run: |
+          terraform fmt -check -recursive
 
       - name: Terraform Validate
-        run: terraform validate
+        run: |
+          terraform validate
 
       - name: Terraform State List
         run: |
@@ -111,7 +176,10 @@ jobs:
           echo "KUBERNETES DESTROY PLAN"
           echo "========================================"
 
-          terraform plan -destroy -out=destroy-k8s.tfplan
+          terraform plan \
+            -destroy \
+            -input=false \
+            -out=destroy-k8s.tfplan
 
       - name: Terraform Destroy
         run: |
@@ -119,8 +187,15 @@ jobs:
           echo "KUBERNETES DESTROY"
           echo "========================================"
 
-          terraform apply -auto-approve destroy-k8s.tfplan
+          terraform apply \
+            -input=false \
+            -auto-approve \
+            destroy-k8s.tfplan
 
+
+  # ============================================================
+  # DESTROY AZURE INFRASTRUCTURE
+  # ============================================================
 
   destroy-infrastructure:
     name: Destroy Azure Infrastructure
@@ -145,13 +220,16 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: terraform init
+        run: |
+          terraform init -input=false
 
       - name: Terraform Format Check
-        run: terraform fmt -check -recursive
+        run: |
+          terraform fmt -check -recursive
 
       - name: Terraform Validate
-        run: terraform validate
+        run: |
+          terraform validate
 
       - name: Terraform State List
         run: |
@@ -167,7 +245,10 @@ jobs:
           echo "INFRASTRUCTURE DESTROY PLAN"
           echo "========================================"
 
-          terraform plan -destroy -out=destroy-infra.tfplan
+          terraform plan \
+            -destroy \
+            -input=false \
+            -out=destroy-infra.tfplan
 
       - name: Terraform Destroy
         run: |
@@ -175,4 +256,8 @@ jobs:
           echo "INFRASTRUCTURE DESTROY"
           echo "========================================"
 
-          terraform apply -auto-approve destroy-infra.tfplan
+          terraform apply \
+            -input=false \
+            -auto-approve \
+            destroy-infra.tfplan
+```
