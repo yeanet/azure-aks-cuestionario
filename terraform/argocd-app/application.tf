@@ -10,17 +10,14 @@ resource "kubernetes_secret" "argocd_azuredevops_repo" {
 
   type = "Opaque"
 
-  string_data = {
-    type     = "git"
-    url      = "https://dev.azure.com/yeanet-devops/Cuestionario-AzureDevOps/_git/Cuestionario-AzureDevOps"
-    username = "yeanet-devops"
-    password = var.argocd_repo_password
+  data = {
+    type     = base64encode("git")
+    url      = base64encode("https://dev.azure.com/yeanet-devops/Cuestionario-AzureDevOps/_git/Cuestionario-AzureDevOps")
+    username = base64encode("yeanet-devops")
+    password = base64encode(var.argocd_repo_password)
   }
-
-  depends_on = [
-    helm_release.argocd
-  ]
 }
+
 
 
 resource "kubernetes_manifest" "cuestionario_application" {
