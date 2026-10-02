@@ -1,3 +1,28 @@
+resource "kubernetes_secret" "argocd_azuredevops_repo" {
+  metadata {
+    name      = "azuredevops-repo"
+    namespace = "argocd"
+
+    labels = {
+      "argocd.argoproj.io/secret-type" = "repository"
+    }
+  }
+
+  type = "Opaque"
+
+  string_data = {
+    type     = "git"
+    url      = "https://dev.azure.com/yeanet-devops/Cuestionario-AzureDevOps/_git/Cuestionario-AzureDevOps"
+    username = "yeanet-devops"
+    password = var.argocd_repo_password
+  }
+
+  depends_on = [
+    helm_release.argocd
+  ]
+}
+
+
 resource "kubernetes_manifest" "cuestionario_application" {
   manifest = {
     apiVersion = "argoproj.io/v1alpha1"
@@ -34,4 +59,8 @@ resource "kubernetes_manifest" "cuestionario_application" {
       }
     }
   }
+
+  depends_on = [
+    kubernetes_secret.argocd_azuredevops_repo
+  ]
 }
