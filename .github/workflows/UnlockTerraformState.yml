@@ -1,0 +1,192 @@
+name: Maintenance - Unlock Terraform State
+
+on:
+  workflow_dispatch:
+    inputs:
+
+      state:
+        description: "Terraform state que quieres desbloquear"
+        required: true
+        type: choice
+        options:
+          - argocd
+          - k8s
+          - infra
+
+      lock_id:
+        description: "ID exacto del Terraform state lock"
+        required: true
+        type: string
+
+      confirmation:
+        description: "Escribe UNLOCK para confirmar"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ARM_USE_OIDC: "true"
+  ARM_USE_AZUREAD: "true"
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+
+  unlock:
+    name: Unlock Terraform State
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ==========================================================
+      # VALIDATION
+      # ==========================================================
+
+      - name: Validate confirmation
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          echo "========================================"
+          echo "TERRAFORM STATE UNLOCK"
+          echo "========================================"
+
+          if [ "$CONFIRMATION" != "UNLOCK" ]; then
+            echo "ERROR: Debes escribir exactamente UNLOCK."
+            exit 1
+          fi
+
+          echo "Confirmation valid."
+
+      - name: Validate Lock ID
+        shell: bash
+        env:
+          LOCK_ID: ${{ inputs.lock_id }}
+        run: |
+          echo "========================================"
+          echo "LOCK ID VALIDATION"
+          echo "========================================"
+
+          if [[ ! "$LOCK_ID" =~ ^[0-9a-fA-F-]{36}$ ]]; then
+            echo "ERROR: El Lock ID no tiene formato UUID válido."
+            echo "Valor recibido: $LOCK_ID"
+            exit 1
+          fi
+
+          echo "Lock ID format valid."
+
+      # ==========================================================
+      # SELECT TERRAFORM DIRECTORY
+      # ==========================================================
+
+      - name: Select Terraform State
+        shell: bash
+        env:
+          STATE: ${{ inputs.state }}
+        run: |
+          case "$STATE" in
+
+            argocd)
+              echo "TF_DIRECTORY=terraform/argocd-app" >> "$GITHUB_ENV"
+              ;;
+
+            k8s)
+              echo "TF_DIRECTORY=terraform/k8s" >> "$GITHUB_ENV"
+              ;;
+
+            infra)
+              echo "TF_DIRECTORY=terraform/infraAKS" >> "$GITHUB_ENV"
+              ;;
+
+            *)
+              echo "ERROR: Terraform state desconocido."
+              exit 1
+              ;;
+          esac
+
+      # ==========================================================
+      # CHECKOUT
+      # ==========================================================
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ==========================================================
+      # AZURE LOGIN
+      # ==========================================================
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ==========================================================
+      # TERRAFORM
+      # ==========================================================
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # ==========================================================
+      # INIT
+      # ==========================================================
+
+      - name: Terraform Init
+        shell: bash
+        working-directory: ${{ env.TF_DIRECTORY }}
+        run: |
+          echo "========================================"
+          echo "TERRAFORM INIT"
+          echo "========================================"
+
+          terraform init -input=false
+
+      # ==========================================================
+      # SHOW INFORMATION
+      # ==========================================================
+
+      - name: Show Unlock Information
+        shell: bash
+        env:
+          STATE: ${{ inputs.state }}
+          LOCK_ID: ${{ inputs.lock_id }}
+        run: |
+          echo "========================================"
+          echo "UNLOCK INFORMATION"
+          echo "========================================"
+          echo ""
+          echo "Terraform state : $STATE"
+          echo "Terraform path  : $TF_DIRECTORY"
+          echo "Lock ID         : $LOCK_ID"
+          echo ""
+          echo "WARNING:"
+          echo "El force-unlock solo debe utilizarse cuando"
+          echo "se haya confirmado que no existe otro proceso"
+          echo "Terraform ejecutándose sobre este state."
+          echo ""
+
+      # ==========================================================
+      # FORCE UNLOCK
+      # ==========================================================
+
+      - name: Terraform Force Unlock
+        shell: bash
+        working-directory: ${{ env.TF_DIRECTORY }}
+        env:
+          LOCK_ID: ${{ inputs.lock_id }}
+        run: |
+          echo "========================================"
+          echo "FORCE UNLOCK"
+          echo "========================================"
+
+          terraform force-unlock -force "$LOCK_ID"
+
+          echo ""
+          echo "Terraform state unlock completed."
+
